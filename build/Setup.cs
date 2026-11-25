@@ -15,8 +15,8 @@ using Microsoft.Win32;
 
 [assembly: AssemblyTitle("XG Mobile Popup Guard Setup")]
 [assembly: AssemblyProduct("XGPopupGuard")]
-[assembly: AssemblyVersion("1.1.0.0")]
-[assembly: AssemblyFileVersion("1.1.0.0")]
+[assembly: AssemblyVersion("1.2.0.0")]
+[assembly: AssemblyFileVersion("1.2.0.0")]
 
 namespace XGGuardSetup {
     internal static class Program {
@@ -32,7 +32,7 @@ namespace XGGuardSetup {
         private static int Main(string[] args) {
             Console.Title = "XG Mobile Popup Guard - Setup";
             Console.WriteLine("==============================================");
-            Console.WriteLine("  XG Mobile Popup Guard - Setup v1.1");
+            Console.WriteLine("  XG Mobile Popup Guard - Setup v1.2");
             Console.WriteLine("  ROG Ally + XG Mobile: auto-stop pop-up Armoury Crate");
             Console.WriteLine("==============================================");
             Console.WriteLine();

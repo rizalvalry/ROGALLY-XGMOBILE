@@ -236,8 +236,8 @@ $escalateXml = @"
 "@
 
 # 6. Task detektor: user interaktif, TANPA elevasi (LeastPrivilege). Pemicu:
-#    - Logon (tunda 5 dtk)  : menggantikan "At startup" - desktop belum ada sebelum logon
-#    - Session unlock       : pop-up sering muncul setelah layar dibuka kembali
+#    - Logon (tunda 30 dtk) : menggantikan "At startup" - desktop belum ada sebelum logon;
+#                             tunda 30 dtk agar service AUTO_START sudah start (tanpa polling)
 #    - Kernel-Power 507     : keluar dari Modern Standby (sleep di ROG Ally)
 #    - Kernel-Power 107 / Power-Troubleshooter 1 : resume dari hibernate / S3
 $query = @"
@@ -257,8 +257,7 @@ $detectorXml = @"
     <Description>$(& $esc "Detektor pop-up 'Activate/Deactivate the ROG XG Mobile' (tanpa elevasi). Log: %LOCALAPPDATA%\XGPopupGuard\guard.log")</Description>
   </RegistrationInfo>
   <Triggers>
-    <LogonTrigger><Enabled>true</Enabled><UserId>$userSid</UserId><Delay>PT5S</Delay></LogonTrigger>
-    <SessionStateChangeTrigger><Enabled>true</Enabled><StateChange>SessionUnlock</StateChange><UserId>$userSid</UserId></SessionStateChangeTrigger>
+    <LogonTrigger><Enabled>true</Enabled><UserId>$userSid</UserId><Delay>PT30S</Delay></LogonTrigger>
     <EventTrigger><Enabled>true</Enabled><Subscription>$(& $esc $query)</Subscription></EventTrigger>
   </Triggers>
   <Principals>

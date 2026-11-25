@@ -1,7 +1,7 @@
 # XG Mobile Popup Guard (ROG Ally + XG Mobile)
 
 Menghentikan otomatis pop-up bug **"Activate / Deactivate the ROG XG Mobile"** dari Armoury Crate SE
-yang muncul berulang setelah boot, login, unlock, atau bangun dari sleep, dengan cara menghentikan
+yang muncul berulang setelah boot, login, atau bangun dari sleep, dengan cara menghentikan
 `ARMOURY CRATE SE Service` **hanya ketika pop-up tersebut benar-benar terdeteksi**.
 Tidak menyentuh proses atau driver NVIDIA.
 
@@ -14,7 +14,7 @@ Tidak menyentuh proses atau driver NVIDIA.
    Copy-Item .\XGPopupGuard-Setup.exe "C:\Program Files\XGPopupGuard-dist\"
    Get-FileHash "C:\Program Files\XGPopupGuard-dist\XGPopupGuard-Setup.exe"
    ```
-   SHA256 v1.1: `CAA774EEC6A6E3C0638E7479380B4CD7332533249DA1B3410A1EF21DAB1370F5`
+   SHA256 v1.2: `5AACA7521ED20A5C83EF9B79B5A1E8BE59606764D10173421048D80CBA4D0780`
 3. Jalankan exe tersebut → setujui UAC → pilih **[1] Install / Update**.
    (File tidak ditandatangani: SmartScreen akan menampilkan "Unknown publisher" → *More info* → *Run anyway*.)
 
@@ -24,12 +24,19 @@ Mode tanpa menu: `XGPopupGuard-Setup.exe /install /quiet` atau `/uninstall /quie
 
 | Komponen | Berjalan sebagai | Tugas |
 |---|---|---|
-| Task `\ROGAlly\XGPopupGuard` → `XGPopupGuard.ps1` | User, **tanpa elevasi** | Saat logon / unlock / wake (Kernel-Power 507, 107, Power-Troubleshooter 1), memantau 90 dtk (cek tiap 2 dtk) jendela berjudul "XG Mobile" milik proses Armoury Crate SE |
+| Task `\ROGAlly\XGPopupGuard` → `XGPopupGuard.ps1` | User, **tanpa elevasi** | Saat logon (tunda 30 dtk) / wake (Kernel-Power 507, 107, Power-Troubleshooter 1). Service sudah Stopped → keluar seketika. Service berjalan → memantau maks. 60 dtk (cek tiap 3 dtk) jendela berjudul "XG Mobile" milik proses Armoury Crate SE, lalu keluar |
 | Task `\ROGAlly\XGPopupGuard-Escalate` → `XGPopupGuard.Escalate.ps1` | **SYSTEM** (dipicu detektor) | **Tahap 1** stop normal (setara `net stop`) · **Tahap 2** bila macet/Error 1053: kill `ArmouryCrateSE.Service.exe` terverifikasi · **Tahap 3** stop ulang bila SCM me-restart service · **Tahap 4** bila service Stopped tapi pop-up masih ada: tutup proses pemilik pop-up (terverifikasi di folder Armoury Crate, sesi user, bukan service) |
 
 - Detektor tidak memegang hak admin; semua tindakan berhak tinggi divalidasi ulang oleh task SYSTEM.
 - Akun user hanya boleh **menjalankan** task SYSTEM (SDDL `FRFX`), tidak bisa mengubah/menghapusnya.
 - Terpasang di `C:\Program Files\XGPopupGuard` (ACL: Administrators/SYSTEM penuh, Users baca).
+
+## Beban sistem
+
+- **Tidak ada proses yang berjalan terus / idle.** Task Scheduler hanya menjalankan detektor saat logon dan wake.
+- Service Armoury sudah Stopped (pop-up tidak mungkin ada) → detektor keluar dalam ~0,5 dtk.
+- Service berjalan → maks. 60 dtk, total CPU < 1 dtk, RAM ~70–90 MB, lalu proses hilang dan RAM dibebaskan.
+- Task SYSTEM hanya berjalan beberapa detik saat diminta menghentikan service.
 
 ## Log
 
@@ -49,8 +56,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "C:\Program Files\XGPopupGua
 
 SHA256 file sumber:
 ```
-55E655670D5546D4290A1BE12F0191487066E99F13CA06C508F4431FE9E4EFDB  Install-XGPopupGuard.ps1
-D9CABAB19F06C7C1D19249A54A7227DB25A648702C9FFA33ADD9FC64327D8F7B  XGPopupGuard.ps1
+63AE533D5F200A7584B95DCB369CB173F15CABEE6D09B4847F3C79B9DD1D4D9E  Install-XGPopupGuard.ps1
+AF94705529C359A35D87A851D9C51C2973102A3B491A458EF47797519298A0A2  XGPopupGuard.ps1
 8224EB596863AA8BF1F4BB596733AB7581F30952668A54A3CBE4EB0479E892A3  XGPopupGuard.Escalate.ps1
 2DED92F131926FF96AD817C7AA8B49F51DC4C35EDA4DAD00F0037E939E89EABE  XGGuard.Common.ps1
 BE5EBD72954318EA38697624CC2B1D0EF08FFD98D64C3D58108CA34B3A99FDC1  XGGuard.Win32.cs

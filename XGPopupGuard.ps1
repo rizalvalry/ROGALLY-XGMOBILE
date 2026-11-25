@@ -4,9 +4,12 @@
     XG Mobile Popup Guard (DETEKTOR) - berjalan TANPA elevasi sebagai user interaktif.
 
 .DESCRIPTION
-    Dijalankan oleh task \ROGAlly\XGPopupGuard saat logon, unlock, dan wake.
-    Memantau jendela top-level selama -DurationSeconds (default 90 dtk), interval
-    -IntervalSeconds (default 2 dtk). Jika jendela berjudul "XG Mobile" milik proses
+    Dijalankan oleh task \ROGAlly\XGPopupGuard saat logon (tunda 30 dtk) dan wake.
+    Jika service Armoury Crate SE sudah Stopped, langsung keluar (~0,5 dtk): service
+    berhenti = pop-up tidak mungkin ada, jadi tidak ada resource yang tertinggal.
+    Jika service berjalan, memantau jendela top-level selama -DurationSeconds (default
+    60 dtk), interval -IntervalSeconds (default 3 dtk), lalu keluar. Tidak ada proses
+    yang tetap hidup di luar jendela waktu itu. Jika jendela berjudul "XG Mobile" milik proses
     Armoury Crate SE terdeteksi, detektor meminta task SYSTEM
     \ROGAlly\XGPopupGuard-Escalate untuk:
         Tahap 1-3 : "stop-service"      - stop normal, force-kill terverifikasi bila
@@ -29,8 +32,8 @@
 #>
 [CmdletBinding()]
 param(
-    [ValidateRange(10, 600)][int]$DurationSeconds = 90,
-    [ValidateRange(1, 10)][int]$IntervalSeconds = 2,
+    [ValidateRange(10, 600)][int]$DurationSeconds = 60,
+    [ValidateRange(1, 10)][int]$IntervalSeconds = 3,
     [ValidatePattern('^[A-Za-z0-9_-]{1,32}$')][string]$Trigger = 'manual',
     [string]$LogPath = '',
     [switch]$DryRun
@@ -138,26 +141,24 @@ function Wait-PopupGone([int]$TimeoutSeconds) {
 # =====================================================================
 # 3. ALUR UTAMA
 #    - Satu instance dijamin Task Scheduler (MultipleInstancesPolicy=IgnoreNew).
-#    - Service sudah Stopped DAN uptime > 5 menit -> tidak ada sumber pop-up, exit.
-#      Di 5 menit pertama setelah boot tetap memantau (service AUTO_START mungkin
-#      belum start saat logon).
+#    - Service Stopped -> pop-up tidak mungkin ada -> keluar SEKETIKA, sebelum memuat
+#      apa pun lainnya. Boot race (service AUTO_START belum start saat logon) ditangani
+#      oleh tunda 30 dtk pada pemicu logon, bukan dengan memantau.
 #    - Tahap 1-3 lewat "stop-service"; Tahap 4 lewat "close-owner:<PID>" hanya jika
 #      service Stopped tetapi pop-up masih ada.
 # =====================================================================
 try {
+    $svc = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
+    if (-not $svc) { Write-GuardLog "Service '$ServiceName' tidak terdaftar di SCM; keluar" 'WARN'; exit 0 }
+    if ($svc.Status -eq 'Stopped' -and -not $DryRun) {
+        Write-GuardLog 'Service sudah Stopped; pop-up tidak mungkin ada - keluar'
+        exit 0
+    }
+
     Import-GuardInterop
     $script:Targets = Resolve-GuardTargets
     if (-not $script:Targets) { Write-GuardLog "Service '$ServiceName' tidak terpasang; keluar" 'WARN'; exit 0 }
-
-    $uptimeMin = [XGGuard.Win32]::GetUptimeMilliseconds() / 60000
-    Write-GuardLog ("Mulai memantau {0} dtk, interval {1} dtk, uptime {2:N1} mnt{3}" -f $DurationSeconds, $IntervalSeconds, $uptimeMin, $(if ($DryRun) { ' [DRY-RUN]' }))
-
-    $svc = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
-    if (-not $svc) { Write-GuardLog "Service '$ServiceName' tidak terdaftar di SCM; keluar" 'WARN'; exit 0 }
-    if ($svc.Status -eq 'Stopped' -and $uptimeMin -gt 5 -and -not $DryRun) {
-        Write-GuardLog 'Service sudah Stopped; tidak ada yang perlu dilakukan'
-        exit 0
-    }
+    Write-GuardLog ("Mulai memantau {0} dtk, interval {1} dtk, service {2}{3}" -f $DurationSeconds, $IntervalSeconds, $svc.Status, $(if ($DryRun) { ' [DRY-RUN]' }))
 
     $sw = [Diagnostics.Stopwatch]::StartNew()
     while ($sw.Elapsed.TotalSeconds -lt $DurationSeconds) {
