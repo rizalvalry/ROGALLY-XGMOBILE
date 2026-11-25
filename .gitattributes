@@ -1,0 +1,5 @@
+# Simpan byte apa adanya (tanpa konversi CRLF/LF) agar SHA256 file tetap cocok
+# dengan hash yang tertanam di setup .exe dan yang tercantum di README.
+* -text
+*.exe binary
+*.dll binary
